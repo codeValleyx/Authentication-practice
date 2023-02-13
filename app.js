@@ -3,7 +3,9 @@ require("dotenv").config();
 const express= require("express");
 const mongoose= require("mongoose");
 // const encrypt = require("mongoose-encryption");
-const md5 = require("md5");
+// const md5 = require("md5");
+const bcrypt = require("bcrypt");
+const saltRounds = 10;
 
 const app= express();
 
@@ -45,16 +47,18 @@ app.post("/register", (req, res)=>{
         else{
             if(result) res.send("Username already exists");
             else{
-                const newUser = new User({
-                    email : req.body.username,
-                    password : md5(req.body.password)
-                });
+                bcrypt.hash(req.body.password, saltRounds, (error, hash)=>{
+                    const newUser = new User({
+                        email : req.body.username,
+                        password : hash
+                    });
 
-                newUser.save((err)=>{
-                    if(err)
-                        res.send(err)
-                    else
-                        res.render("secrets");
+                    newUser.save((err)=>{
+                        if(err)
+                            res.send(err)
+                        else
+                            res.render("secrets");
+                    });
                 });
             }
         }
@@ -66,12 +70,14 @@ app.post("/login", (req, res)=>{
         if(err) res.send(err);
         else{
             if(result){
-                if(result.password === md5(req.body.password)){
-                    res.render("secrets");
-                }
-                else{
-                    res.send("Wrong password");
-                }
+                bcrypt.compare(req.body.password, result.password, (error, hashResult)=>{
+                    if(hashResult){
+                        res.render("secrets");
+                    }
+                    else{
+                        res.send("Wrong password");
+                    }
+                });
             } else{
                 res.send("User doesn't exist");
             }
